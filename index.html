@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adamawa State Healthcare Facilities Map</title>
+    <!-- ArcGIS CSS -->
+    <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+        }
+        header {
+            background-color: green;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        footer {
+            background-color: green;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        nav {
+            background-color: white;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        nav a {
+            color: green;
+            margin: 0 15px;
+            text-decoration: none;
+        }
+        nav a:hover {
+            text-decoration: underline;
+            font-weight: bold;
+        }
+        #map {
+            height: 80vh;
+            margin-bottom: 40px;
+            margin-left: 20px;
+            margin-right: 50px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            position: relative; /* Positioning for the control buttons */
+        }
+        #filter {
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+        }
+        select:focus {
+            border-color: green;
+            outline: none;
+        }
+        .control-buttons {
+            position: absolute; /* Positioning to overlay on the map */
+            top: 10px;
+            left: 10px;
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .control-buttons button {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .control-buttons img {
+            width: 30px; /* Size of the icons */
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Adamawa State Healthcare Facilities</h1>
+        <p>Explore and filter healthcare facilities based on type and other categories</p>
+    </header>
+    
+    <nav>
+        <div class="container">
+            <a href="reporting.html">Reporting</a>
+            <a href="recommendations.html">Recommendation</a>
+        </div>
+    </nav>
+
+    <div id="filter" class="container">
+        <label for="facilityType">Select Facility Type:</label>
+        <select id="facilityType" onchange="filterFacilities()">
+            <option value="All">All</option>
+            <option value="Hospital">Hospital</option>
+            <option value="Clinic">Clinic</option>
+            <option value="Health Center">Health Center</option>
+        </select>
+    </div>
+
+    <!-- Div to display the map -->
+    <div id="map" class="container">
+        <div class="control-buttons">
+            <button onclick="zoomIn()"><img src="https://img.icons8.com/ios-filled/50/000000/zoom-in.png" alt="Zoom In"/></button>
+            <button onclick="zoomOut()"><img src="https://img.icons8.com/ios-filled/50/000000/zoom-out.png" alt="Zoom Out"/></button>
+            <button onclick="resetExtent()"><img src="https://img.icons8.com/ios-filled/50/000000/home.png" alt="Default Extent"/></button>
+            <button onclick="findMyLocation()"><img src="https://img.icons8.com/ios-filled/50/000000/marker.png" alt="Find My Location"/></button>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 Adamawa State Healthcare. All Rights Reserved.</p>
+    </footer>
+
+    <!-- ArcGIS JavaScript API -->
+    <script src="https://js.arcgis.com/4.27/"></script>
+    <script>
+        var map, view, healthcareLayer;
+
+        require([
+            "esri/WebMap",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer",
+            "esri/geometry/Point",
+            "esri/Graphic",
+            "esri/widgets/Locate"
+        ], function (WebMap, MapView, FeatureLayer, Point, Graphic, Locate) {
+            var webmap = new WebMap({
+                portalItem: {
+                    id: "049f6860885144f7ac2065bc66393c34" // Web map ID from your ArcGIS link
+                }
+            });
+
+            view = new MapView({
+                container: "map",
+                map: webmap,
+                zoom: 8,
+                center: [12.6477, 9.1775]
+            });
+
+            view.when(function() {
+                healthcareLayer = webmap.layers.find(function(layer) {
+                    return layer.title === "Buffer HFC"; 
+                });
+
+                if (healthcareLayer) {
+                    healthcareLayer.popupTemplate = {
+                        title: "{FACILITY_NAME}",
+                        content: "<strong>Type:</strong> {FACILITY_TYPE}<br><strong>Services:</strong> {SERVICES_OFFERED}<br><strong>Contact:</strong> {CONTACT_INFO}"
+                    };
+                    healthcareLayer.visible = true;
+                }
+            });
+
+            // Function to reset the map view to the default extent
+            window.resetExtent = function() {
+                view.goTo({ center: [12.6477, 9.1775], zoom: 8 }); // Reset to default zoom and center
+            };
+
+            // Function to zoom in
+            window.zoomIn = function() {
+                view.zoom += 1;
+            };
+
+            // Function to zoom out
+            window.zoomOut = function() {
+                view.zoom -= 1;
+            };
+
+            // Function to find user's location
+            window.findMyLocation = function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        var point = new Point({
+                            longitude: position.coords.longitude,
+                            latitude: position.coords.latitude
+                        });
+                        view.goTo({ target: point, zoom: 15 }); // Zoom into the user's location
+                        var graphic = new Graphic({
+                            geometry: point,
+                            symbol: {
+                                type: "simple-marker",
+                                color: "red",
+                                size: "12px"
+                            }
+                        });
+                        view.graphics.add(graphic); // Add a marker for the user's location
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
+            };
+        });
+
+        function filterFacilities() {
+            var facilityType = document.getElementById("facilityType").value;
+            var definitionExpression = "";
+
+            if (facilityType !== "All") {
+                definitionExpression = "FACILITY_TYPE = '" + facilityType + "'";
+            }
+
+            if (healthcareLayer) {
+                healthcareLayer.definitionExpression = definitionExpression;
+            }
+        }
+    </script>
+</body>
+</html>
